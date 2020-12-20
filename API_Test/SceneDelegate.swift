@@ -4,8 +4,9 @@
 //
 //  Created by Seok on 2020/10/25.
 //
-
 import UIKit
+import KakaoSDKAuth
+import KakaoSDKUser
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
@@ -17,6 +18,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
         // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
         guard let _ = (scene as? UIWindowScene) else { return }
+    }
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        if let url = URLContexts.first?.url {
+            if (AuthApi.isKakaoTalkLoginUrl(url)) {
+                _ = AuthController.handleOpenUrl(url: url)
+            }
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -34,11 +42,18 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneWillResignActive(_ scene: UIScene) {
         // Called when the scene will move from an active state to an inactive state.
         // This may occur due to temporary interruptions (ex. an incoming phone call).
+        var date = Date()
+        date.addTimeInterval(1800)
+        UserDefaults.standard.setValue(date, forKey: "logInVaildateTime")
+        print(UserDefaults.standard.value(forKey: "logInVaildateTime"))
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
         // Called as the scene transitions from the background to the foreground.
         // Use this method to undo the changes made on entering the background.
+        if let logInValidateTime = UserDefaults.standard.value(forKey: "logInVaildateTime") as? Date {
+            DataManager.shared.kakaoLogOut(self, logInValidateTime: logInValidateTime)
+        }
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
@@ -53,3 +68,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
 }
 
+extension SceneDelegate {
+    func successLogOut() {
+        guard let window = self.window else {
+            return
+        }
+        print("로그인 시간 만료 후 로그아웃 성공")
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        let logInVC = storyboard.instantiateViewController(withIdentifier: "LogInViewController")
+        
+        window.rootViewController = logInVC
+        UIView.transition(with: window, duration: 0.5, options: .transitionCrossDissolve, animations: nil)
+    }
+}
